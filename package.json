@@ -1,0 +1,14 @@
+{
+    "name": "mariadb-transact",
+    "description": "A transaction manager for the mariasql module.",
+    "version": "0.0.1",
+    "main": "lib/index.js",
+    "private": true,
+    "author": {
+        "name": "Luke Andersen-Quest",
+        "email": "luke.andersen.quest@gmail.com"
+    },
+    "dependencies": {
+        "mariasql": "0.1.x"
+    }
+}
