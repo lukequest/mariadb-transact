@@ -12,5 +12,11 @@ A transaction manager for the node.js MariaSQL module that uses promises.
       host: "HOST",
       db: "DATABASE"
     };
+
     TransactionManager = require("mariadb-transact");
     transact = new TransactionManager({connection:mysqlcfg});
+	
+	transact.init()
+	.then(function() {
+	  // DO STUFF
+	});
