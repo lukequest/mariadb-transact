@@ -1,7 +1,7 @@
 mariadb-transact
 ================
 
-A transaction manager for the node.js MariaSQL module.
+A transaction manager for the node.js MariaSQL module that uses promises.
 
 
 ## Usage
