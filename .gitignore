@@ -14,5 +14,6 @@ results
 
 # Project and IDE specific stuff
 .idea
+test*.*
 npm-debug.log
 node_modules
