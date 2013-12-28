@@ -203,7 +203,7 @@
 
     TransactionManager.prototype.command = function(conn, sql, params) {
       /*
-        Perform an SQL command.
+        Perform an SQL command (no result returned, use for INSERT/UPDATE queries).
       */
 
       var deferred, q, rerr, ret;
@@ -304,7 +304,7 @@
 
     TransactionManager.prototype.begin = function() {
       /*
-        Attempt to begin a transaction. Add to queue if pool is empty.
+        Attempt to begin a transaction. Add to promise to queue if connection pool is empty.
       */
 
       var deferred,

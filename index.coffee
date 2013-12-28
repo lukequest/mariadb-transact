@@ -124,6 +124,7 @@ class TransactionManager extends EventEmitter
       else
         deferred.reject(reterr)
       setImmediate =>
+        # Push this connection back into the pool and check the queue for unresolved promises.
         @pool.push(conn)
         @checkQueue()
     return deferred.promise
@@ -145,7 +146,7 @@ class TransactionManager extends EventEmitter
 
   command: (conn, sql, params) ->
     ###
-      Perform an SQL command.
+      Perform an SQL command (no result returned, use for INSERT/UPDATE queries).
     ###
     deferred = Q.defer()
     if !params
@@ -210,7 +211,7 @@ class TransactionManager extends EventEmitter
 
   begin: ->
     ###
-      Attempt to begin a transaction. Add to queue if pool is empty.
+      Attempt to begin a transaction. Add to promise to queue if connection pool is empty.
     ###
     deferred = Q.defer()
 
