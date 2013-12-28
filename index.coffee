@@ -1,5 +1,7 @@
 {EventEmitter} = require "events"
+
 MariaSQL = require "mariasql"
+Q = require "q"
 
 class TransactionManager extends EventEmitter
   ###
@@ -8,48 +10,93 @@ class TransactionManager extends EventEmitter
 
   constructor: (opts) ->
     if !opts then opts = {}
+    @conn = connected:false
     @pool = []
     @queue = []
-    @poolsize = opts.poolsize || 20
+    @poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 20
+    @conncfg = opts.connection
+    @log = opts.log ||
+      info:->
+      warn:->
+      error:->
 
+
+  createConnection: ->
+    ###
+      Create a new connection object.
+    ###
+    conn = new MariaSQL()
+    conn.connect @conncfg
+    conn.command = conn.cmd = @command.bind(@, conn)
+    conn.commit = @commit.bind(@, conn)
+    conn.fetchArray = @fetchArray.bind(@, conn)
+    conn.fetchOne = @fetchOne.bind(@, conn)
+    conn.rollback = @rollback.bind(@, conn)
+    return conn
+
+
+  init: ->
+    ###
+      Initialize all connections.
+    ###
     # Helper function for creating connections.
-    createConnection = ->
-      conn = new MariaSQL()
-      conn.connect opts.connection
-      conn.command = conn.cmd = @command.bind(@, conn)
-      conn.commit = @commit.bind(@, conn)
-      conn.fetchArray = @fetchArray.bind(@, conn)
-      conn.fetchOne = @fetchOne.bind(@, conn)
-      conn.rollback = @rollback.bind(@, conn)
-      return conn
+    deferred = Q.defer()
 
     # First, initiate the basic "non-transactional" connection.
-    @conn = createConnection.call(@)
+    @conn = @createConnection()
     @conn.on "error", (err) =>
       @emit "error", err
+      deferred.reject(err)
     @conn.on "connect", =>
       # Now, initialize the transaction connections.
       waiting = 0
-      for i in [1..@poolsize]
-        waiting++
-        conn = createConnection.call(@)
-        conn.on "connect", =>
-          q = conn.query "SET autocommit = 0"
-          q.on "result", =>
-          q.on "error", (err) => @emit "error", err
-          q.on "end", =>
-            @pool.push conn
-            waiting--
-            if waiting <= 0
-              @emit "init"
+      if @poolsize > 0
+        wrapper = =>
+          waiting++
+          conn = @createConnection()
+          conn.on "connect", =>
+            q = conn.query "SET autocommit = 0"
+            q.on "result", =>
+            q.on "error", (err) => @emit "error", err
+            q.on "end", =>
+              @pool.push conn
+              waiting--
+              if waiting <= 0
+                @emit "init"
+                @log.info "TransactionManager initialized."
+                deferred.resolve()
+        for i in [1..@poolsize]
+          wrapper()
+      else
+        @emit "init"
+        deferred.resolve()
+    return deferred.promise
 
 
-  basic: (callback) ->
+  basic: ->
     ###
       Get a basic, non-transactional connection. (Only for simple queries.)
     ###
+    deferred = Q.defer()
     setImmediate =>
-      callback?(@conn)
+      if @conn.connected
+        deferred.resolve(@conn)
+      else
+        deferred.reject("The transaction manager is not connected to a database.")
+    return deferred.promise
+
+
+  close: ->
+    ###
+      Close all connections.
+    ###
+    deferred = Q.defer()
+    setImmediate =>
+      @conn.end()
+      for c in @pool
+        c.end()
+      deferred.resolve()
+    return deferred.promise
 
 
   checkQueue: ->
@@ -57,44 +104,51 @@ class TransactionManager extends EventEmitter
       Check the queue for waiting transaction initializations.
     ###
     if @queue.length > 0 && @pool.length > 0
-      callback = @queue.shift()
-      callback?(@pool.shift())
+      @log.info "TransactionManager starting queued transaction."
+      deferred = @queue.shift()
+      deferred.resolve(@pool.shift())
 
 
-  finalCmd: (cmd, conn, callback) ->
+  finalCmd: (cmd, conn) ->
     ###
       Execute rollback or commit.
     ###
+    deferred = Q.defer()
     q = conn.query cmd
     reterr = null
     q.on "result", (res) =>
       res.on "error", (err) => reterr = err
     q.on "end", =>
-      callback?(reterr)
-      @pool.push(conn)
-      @checkQueue()
+      if reterr == null
+        deferred.resolve()
+      else
+        deferred.reject(reterr)
+      setImmediate =>
+        @pool.push(conn)
+        @checkQueue()
+    return deferred.promise
 
 
-  commit: (conn, callback) ->
+  commit: (conn) ->
     ###
       Commit a transaction.
     ###
-    @finalCmd "COMMIT", conn, callback
+    @finalCmd "COMMIT", conn
 
 
-  rollback: (conn, callback) ->
+  rollback: (conn) ->
     ###
       Roll back a transaction.
     ###
-    @finalCmd "ROLLBACK", conn, callback
+    @finalCmd "ROLLBACK", conn
 
 
-  command: (conn, sql, params, callback) ->
+  command: (conn, sql, params) ->
     ###
       Perform an SQL command.
     ###
-    if typeof params == "function"
-      callback = params
+    deferred = Q.defer()
+    if !params
       params = {}
     ret = null
     rerr = null
@@ -103,15 +157,19 @@ class TransactionManager extends EventEmitter
       res.on "end", (info) -> ret = info
       res.on "error", (err) -> rerr = err
     q.on "end", ->
-      callback?(rerr, ret)
+      if rerr == null
+        deferred.resolve(ret)
+      else
+        deferred.reject(rerr)
+    return deferred.promise
 
 
-  fetchArray: (conn, sql, params, callback) ->
+  fetchArray: (conn, sql, params) ->
     ###
       Fetch an array of SQL result rows.
     ###
-    if typeof params == "function"
-      callback = params
+    deferred = Q.defer()
+    if !params
       params = {}
     rows = []
     rerr = null
@@ -120,15 +178,20 @@ class TransactionManager extends EventEmitter
       res.on "row", (row) -> rows.push(row)
       res.on "error", (err) -> rerr = err
     q.on "end", ->
-      callback?(rerr, rows)
+      if rows.length == 0 && rerr == null then rerr = new Error "Result empty."
+      if rerr == null
+        deferred.resolve(rows)
+      else
+        deferred.reject(rerr)
+    return deferred.promise
 
 
-  fetchOne: (conn, sql, params, callback) ->
+  fetchOne: (conn, sql, params) ->
     ###
       Fetch a single SQL result row.
     ###
-    if typeof params == "function"
-      callback = params
+    deferred = Q.defer()
+    if !params
       params = {}
     resrow = null
     rerr = null
@@ -137,35 +200,28 @@ class TransactionManager extends EventEmitter
       res.on "row", (row) -> if resrow==null then resrow = row
       res.on "error", (err) -> rerr = err
     q.on "end", ->
-      callback?(rerr, resrow)
+      if resrow == null && rerr == null then rerr = new Error "Result empty."
+      if rerr == null
+        deferred.resolve(resrow)
+      else
+        deferred.reject(rerr)
+    return deferred.promise
 
 
   begin: ->
     ###
       Attempt to begin a transaction. Add to queue if pool is empty.
     ###
-    callback = null
-    transact = true
-    # Parse args.
-    if arguments.length == 0
-      # No callback = bye bye
-      return
-    else if arguments.length == 1
-      # If the only passed argument is not a function, bye bye
-      if typeof arguments[0] != "function" then return
-      callback = arguments[0]
-    else
-      # More than one argument. Second argument must be function.
-      if typeof arguments[1] != "function" then return
-      transact = !!arguments[0]
-      callback = arguments[1]
+    deferred = Q.defer()
 
-    process.nextTick =>
+    setImmediate =>
       if @pool.length > 0
         # There is an available connection. Start immediately.
-        callback?(@pool.shift())
+        deferred.resolve(@pool.shift())
       else
-        # No connection available. Add to queue.
-        @queue.push(callback)
+        # No connection available. Add promise to queue.
+        @queue.push(deferred)
+        @log.info "TransactionManager added transaction to queue. (Pool is empty.)"
+    return deferred.promise
 
 module.exports = TransactionManager
