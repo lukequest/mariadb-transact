@@ -3,8 +3,12 @@ mariadb-transact
 
 A transaction manager for the node.js MariaSQL module that uses promises.
 
+## API doc
 
-## Usage
+*TODO*
+
+## Example
+	var mysqlcfg, TransactionManager, transact;
 
     mysqlcfg = {
       user: "USERNAME",
@@ -18,5 +22,5 @@ A transaction manager for the node.js MariaSQL module that uses promises.
 	
 	transact.init()
 	.then(function() {
-	  // DO STUFF
+	  // MORE STUFF (TODO)
 	});
