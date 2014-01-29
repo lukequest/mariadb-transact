@@ -179,7 +179,6 @@ class TransactionManager extends EventEmitter
       res.on "row", (row) -> rows.push(row)
       res.on "error", (err) -> rerr = err
     q.on "end", ->
-      if rows.length == 0 && rerr == null then rerr = new Error "Result empty."
       if rerr == null
         deferred.resolve(rows)
       else
@@ -201,7 +200,6 @@ class TransactionManager extends EventEmitter
       res.on "row", (row) -> if resrow==null then resrow = row
       res.on "error", (err) -> rerr = err
     q.on "end", ->
-      if resrow == null && rerr == null then rerr = new Error "Result empty."
       if rerr == null
         deferred.resolve(resrow)
       else

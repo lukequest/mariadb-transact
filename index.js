@@ -254,9 +254,6 @@
         });
       });
       q.on("end", function() {
-        if (rows.length === 0 && rerr === null) {
-          rerr = new Error("Result empty.");
-        }
         if (rerr === null) {
           return deferred.resolve(rows);
         } else {
@@ -290,9 +287,6 @@
         });
       });
       q.on("end", function() {
-        if (resrow === null && rerr === null) {
-          rerr = new Error("Result empty.");
-        }
         if (rerr === null) {
           return deferred.resolve(resrow);
         } else {
