@@ -11,6 +11,7 @@ class TransactionManager extends EventEmitter
   constructor: (opts) ->
     if !opts then opts = {}
     @conn = connected:false
+    @autoconvert = !!opts.autoconvert
     @pool = []
     @queue = []
     @poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 20
@@ -165,6 +166,17 @@ class TransactionManager extends EventEmitter
     return deferred.promise
 
 
+  convert: (row, types) ->
+    ###
+      Convert row elements based on type info.
+    ###
+    for key of row
+      t = types[key]
+      if t=="DATE" || t=="DATETIME" || t=="TIMESTAMP" then row[key] = new Date(row[key])
+      if t=="DECIMAL" || t=="DOUBLE" || t=="FLOAT" then row[key] = parseFloat(row[key])
+      if t=="INTEGER" || t=="TINYINT" || t=="SMALLINT" || t=="MEDIUMINT" || t=="BIGINT" then row[key] = parseInt(row[key])
+
+
   fetchArray: (conn, sql, params) ->
     ###
       Fetch an array of SQL result rows.
@@ -175,10 +187,12 @@ class TransactionManager extends EventEmitter
     rows = []
     rerr = null
     q = conn.query(sql, params)
-    q.on "result", (res) ->
-      res.on "row", (row) -> rows.push(row)
+    q.on "result", (res) =>
+      res.on "row", (row, info) =>
+        if info && info.types && @autoconvert then @convert(row, info.types)
+        rows.push(row)
       res.on "error", (err) -> rerr = err
-    q.on "end", ->
+    q.on "end", =>
       if rerr == null
         deferred.resolve(rows)
       else
@@ -196,10 +210,12 @@ class TransactionManager extends EventEmitter
     resrow = null
     rerr = null
     q = conn.query(sql, params)
-    q.on "result", (res) ->
-      res.on "row", (row) -> if resrow==null then resrow = row
-      res.on "error", (err) -> rerr = err
-    q.on "end", ->
+    q.on "result", (res) =>
+      res.on "row", (row, info) =>
+        if info && info.types && @autoconvert then @convert(row, info.types)
+        if resrow==null then resrow = row
+      res.on "error", (err) => rerr = err
+    q.on "end", =>
       if rerr == null
         deferred.resolve(resrow)
       else
