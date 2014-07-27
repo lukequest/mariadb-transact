@@ -1,7 +1,7 @@
 {
   "name": "mariadb-transact",
   "description": "A transaction manager for the mariasql module that uses promises.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "main": "lib/index.js",
   "private": true,
   "author": {
@@ -9,8 +9,8 @@
     "email": "luke.andersen.quest@gmail.com"
   },
   "dependencies": {
-    "mariasql": "0.1.x",
-    "q": "0.9.x"
+    "mariasql": "~0.1.21",
+    "q": "~2.0.2"
   },
   "devDependencies": {
     "grunt": "^0.4.5",
