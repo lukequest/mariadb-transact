@@ -1,9 +1,11 @@
 {
   "name": "mariadb-transact",
   "description": "A transaction manager for the mariasql module that uses promises.",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "main": "lib/index.js",
-  "private": true,
+  "repository" : { "type": "git", "url": "https://github.com/lukequest/mariadb-transact.git" },
+  "homepage": "https://github.com/lukequest/mariadb-transact.git",
+  "readmeFilename": "README.md",
   "author": {
     "name": "Luke Andersen-Quest",
     "email": "luke.andersen.quest@gmail.com"
@@ -16,5 +18,9 @@
     "grunt": "^0.4.5",
     "grunt-contrib-coffee": "^0.10.1",
     "grunt-contrib-watch": "^0.6.1"
-  }
+  },
+  "engines": { "node": ">=0.8.0" },
+  "keywords": [
+    "maria", "mariasql", "mariadb", "transact", "transaction", "transactions", "sql", "mysql"
+  ]
 }
