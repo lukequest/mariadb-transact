@@ -11,11 +11,11 @@ class TransactionManager extends EventEmitter
   constructor: (opts) ->
     if !opts then opts = {}
     @conn = connected:false
-    @autoconvert = !!opts.autoconvert
+    @autoconvert = if typeof opts.autoconvert == "undefined" then true else !!opts.autoconvert
     @pool = []
     @queue = []
     @poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 20
-    @conncfg = opts.connection
+    @conncfg = opts
     @log = opts.log ||
       info:->
       warn:->
