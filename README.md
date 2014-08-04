@@ -34,7 +34,7 @@ Example
 	    transact.begin()
 	    
 	  .then (sql) ->
-	    sql.command("DELETE FROM invoice_status WHERE name='test'")
+	    sql.command("DELETE FROM mytable WHERE id=3")
 	    
 	    .then (res) ->
 	      console.log res
