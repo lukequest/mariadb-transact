@@ -14,7 +14,7 @@ class TransactionManager extends EventEmitter
     @autoconvert = if typeof opts.metadata == "undefined" then false else !!opts.metadata
     @pool = []
     @queue = []
-    @poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 20
+    @poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 3
     @conncfg = opts
     @log = opts.log ||
       info:->
