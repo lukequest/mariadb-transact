@@ -116,7 +116,7 @@ TransactionManager methods
 
 * **begin**() - < _Promise_>(< _Client_ >client) - Returns a promise that fulfills with a transaction-safe **_Client_** object from the connection pool. Transaction-safe **_Client_** objects must always be completed using their *commit* or *rollback* method, otherwise they will not complete or return to the pool.
 
-* **begin**() - < _Promise_ >() - Closes connection and returns a promise that fulfills when complete.
+* **close**() - < _Promise_ >() - Closes connection and returns a promise that fulfills when complete.
 
 
 Client methods
