@@ -149,7 +149,6 @@ class TransactionManager extends EventEmitter
     deferred = Q.defer()
     Q.ninvoke(conn, "query", sql, params || {})
     .then (res) =>
-      console.log res
       deferred.resolve res.info
     .catch (err) =>
       deferred.reject(err)
