@@ -56,10 +56,10 @@ class TransactionManager extends EventEmitter
           waiting++
           conn = @createConnection()
           conn.on "ready", =>
-            q = conn.query "SET autocommit = 0"
-            q.on "result", =>
-            q.on "error", (err) => @emit "error", err
-            q.on "end", =>
+            Q.ninvoke(conn, "query", "SET autocommit = 0")
+            .catch (err) =>
+              @emit "error", err
+            .finally =>
               @pool.push conn
               waiting--
               if waiting <= 0
@@ -115,15 +115,12 @@ class TransactionManager extends EventEmitter
       Execute rollback or commit.
     ###
     deferred = Q.defer()
-    q = conn.query cmd
-    reterr = null
-    q.on "result", (res) =>
-      res.on "error", (err) => reterr = err
-    q.on "end", =>
-      if reterr == null
-        deferred.resolve()
-      else
-        deferred.reject(reterr)
+    Q.ninvoke(conn, "query", cmd)
+    .then =>
+      deferred.resolve()
+    .catch (err) =>
+      deferred.reject(err)
+    .finally =>
       setImmediate =>
         # Push this connection back into the pool and check the queue for unresolved promises.
         @pool.push(conn)
@@ -150,28 +147,21 @@ class TransactionManager extends EventEmitter
       Perform an SQL command (no result returned, use for INSERT/UPDATE queries).
     ###
     deferred = Q.defer()
-    if !params
-      params = {}
-    ret = null
-    rerr = null
-    q = conn.query(sql, params)
-    q.on "result", (res) ->
-      res.on "end", (info) -> ret = info
-      res.on "error", (err) -> rerr = err
-    q.on "end", ->
-      if rerr == null
-        deferred.resolve(ret)
-      else
-        deferred.reject(rerr)
+    Q.ninvoke(conn, "query", sql, params || {})
+    .then (res) =>
+      console.log res
+      deferred.resolve res.info
+    .catch (err) =>
+      deferred.reject(err)
     return deferred.promise
 
 
-  convert: (row, types) ->
+  convert: (row, metadata) ->
     ###
       Convert row elements based on type info.
     ###
     for key of row
-      t = types[key]
+      t = metadata[key].type
       if t=="DATE" || t=="DATETIME" || t=="TIMESTAMP" then row[key] = new Date(row[key])
       if t=="DECIMAL" || t=="DOUBLE" || t=="FLOAT" then row[key] = parseFloat(row[key])
       if t=="INTEGER" || t=="TINYINT" || t=="SMALLINT" || t=="MEDIUMINT" || t=="BIGINT" then row[key] = parseInt(row[key])
@@ -182,21 +172,13 @@ class TransactionManager extends EventEmitter
       Fetch an array of SQL result rows.
     ###
     deferred = Q.defer()
-    if !params
-      params = {}
-    rows = []
-    rerr = null
-    q = conn.query(sql, params)
-    q.on "result", (res) =>
-      res.on "row", (row, info) =>
-        if info && info.types && @autoconvert then @convert(row, info.types)
-        rows.push(row)
-      res.on "error", (err) -> rerr = err
-    q.on "end", =>
-      if rerr == null
-        deferred.resolve(rows)
-      else
-        deferred.reject(rerr)
+    Q.ninvoke(conn, "query", sql, params || {})
+    .then (res) =>
+      for row in res
+        if res.info && res.info.metadata && @autoconvert then @convert(row, res.info.metadata)
+      deferred.resolve(res)
+    .catch (err) =>
+      deferred.reject(err)
     return deferred.promise
 
 
@@ -205,21 +187,16 @@ class TransactionManager extends EventEmitter
       Fetch a single SQL result row.
     ###
     deferred = Q.defer()
-    if !params
-      params = {}
-    resrow = null
-    rerr = null
-    q = conn.query(sql, params)
-    q.on "result", (res) =>
-      res.on "row", (row, info) =>
-        if info && info.types && @autoconvert then @convert(row, info.types)
-        if resrow==null then resrow = row
-      res.on "error", (err) => rerr = err
-    q.on "end", =>
-      if rerr == null
-        deferred.resolve(resrow)
+    Q.ninvoke(conn, "query", sql, params || {})
+    .then (res) =>
+      if res && res.length
+        row = res[0]
+        if res.info && res.info.metadata && @autoconvert then @convert(row, res.info.metadata)
+        deferred.resolve(row)
       else
-        deferred.reject(rerr)
+        deferred.rssolve(null)
+    .catch (err) =>
+      deferred.reject(err)
     return deferred.promise
 
 
