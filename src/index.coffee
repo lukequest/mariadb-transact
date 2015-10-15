@@ -11,7 +11,7 @@ class TransactionManager extends EventEmitter
   constructor: (opts) ->
     if !opts then opts = {}
     @conn = connected:false
-    @autoconvert = if typeof opts.metadata == "undefined" then false else !!opts.metadata
+    @autoconvert = if typeof opts.metadata == "undefined" then true else !!opts.metadata
     @pool = []
     @queue = []
     @poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 3
@@ -48,14 +48,14 @@ class TransactionManager extends EventEmitter
     @conn.on "error", (err) =>
       @emit "error", err
       deferred.reject(err)
-    @conn.on "connect", =>
+    @conn.on "ready", =>
       # Now, initialize the transaction connections.
       waiting = 0
       if @poolsize > 0
         wrapper = =>
           waiting++
           conn = @createConnection()
-          conn.on "connect", =>
+          conn.on "ready", =>
             q = conn.query "SET autocommit = 0"
             q.on "result", =>
             q.on "error", (err) => @emit "error", err
