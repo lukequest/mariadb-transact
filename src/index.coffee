@@ -149,6 +149,10 @@ class TransactionManager extends EventEmitter
     deferred = Q.defer()
     Q.ninvoke(conn, "query", sql, params || {})
     .then (res) =>
+      if res.info
+        res.info.numRows = parseInt(res.info.numRows)
+        res.info.affectedRows = parseInt(res.info.affectedRows)
+        res.info.insertId = parseInt(res.info.insertId)
       deferred.resolve res.info
     .catch (err) =>
       deferred.reject(err)
