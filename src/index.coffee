@@ -197,7 +197,7 @@ class TransactionManager extends EventEmitter
         if res.info && res.info.metadata && @autoconvert then @convert(row, res.info.metadata)
         deferred.resolve(row)
       else
-        deferred.rssolve(null)
+        deferred.resolve(null)
     .catch (err) =>
       deferred.reject(err)
     return deferred.promise
