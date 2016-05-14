@@ -89,7 +89,7 @@ class TransactionManager
     ###
     if @_queue.length > 0 && @_pool.length > 0
       resolve = @_queue.shift()
-      resolve(@_pool.shift())
+      resolve(@_pool.pop())
 
 
   _finalCmd: (cmd, conn) ->
@@ -177,7 +177,7 @@ class TransactionManager
     return new Promise (resolve) =>
       if @_pool.length > 0
         # There is an available connection. Resolve immediately.
-        resolve(@_pool.shift())
+        resolve(@_pool.pop())
       else
         # No connection available. Add to queue.
         @_queue.push(resolve)
