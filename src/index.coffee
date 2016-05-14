@@ -56,6 +56,7 @@ class TransactionManager
       # Disable autocommit on all transaction connections.
       funcs = []
       for tc in tconns
+        @_pool.push(tc)
         funcs.push(tc._queryAsync("SET autocommit = 0"))
       Promise.all(funcs)
 
