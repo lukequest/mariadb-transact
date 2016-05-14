@@ -97,7 +97,7 @@ class TransactionManager
       Execute rollback or commit.
     ###
     Promise.try =>
-      conn.queryAsync(cmd)
+      conn._queryAsync(cmd)
     .finally =>
       # Push this connection back into the pool and check the queue for unresolved promises.
       @_pool.push(conn)
