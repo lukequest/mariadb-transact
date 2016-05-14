@@ -1,5 +1,6 @@
 MariaSQL = require "mariasql"
 Promise = require "bluebird"
+datetime = require "node-datetime"
 
 class TransactionManager
   ###
@@ -28,6 +29,7 @@ class TransactionManager
       conn.fetchArray = @fetchArray.bind(@, conn)
       conn.fetchOne = @fetchOne.bind(@, conn)
       conn.rollback = @rollback.bind(@, conn)
+      conn.insert = @insert.bind(@, conn)
       conn._queryAsync = Promise.promisify(conn.query, context: conn)
 
       conn.on "ready", =>
@@ -130,6 +132,25 @@ class TransactionManager
         res.info.affectedRows = parseInt(res.info.affectedRows)
         res.info.insertId = parseInt(res.info.insertId)
       return res.info
+
+
+  insert: (conn, tableName, obj, throwIfEmpty = true) ->
+    ###
+      Convenience function to insert an object into a given table.
+    ###
+    Promise.try =>
+      props = {}
+      if obj
+        for k, v of obj
+          if typeof v == "string" || typeof v == "number" || typeof v == "boolean" || v == null
+            props[k] = v
+          else if v instanceof Date
+            props[k] = datetime.create(v).format("Y-m-d H:M:S")
+      if Object.keys(props).length
+        q = "INSERT INTO " + tableName + " (" + Object.keys(props).join(", ") + ") VALUES (:" + Object.keys(props).join(", :") + ")"
+        return conn.command(q, props)
+      else if throwIfEmpty
+        throw new Error("No valid fields passed to insert.")
 
 
   convert: (row, metadata) ->
