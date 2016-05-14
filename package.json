@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "bluebird": "~3.3.5",
-    "mariasql": "~0.2.6"
+    "mariasql": "~0.2.6",
+    "node-datetime": "~1.0.0"
   },
   "devDependencies": {
     "grunt": "^1.0.1",
