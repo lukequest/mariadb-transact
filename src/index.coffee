@@ -52,7 +52,7 @@ class TransactionManager
         for i in [1..@_poolsize]
           funcs.push(@_createConnection())
       Promise.all(funcs)
-    .then (tconns) ->
+    .then (tconns) =>
       # Disable autocommit on all transaction connections.
       funcs = []
       for tc in tconns
