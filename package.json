@@ -20,6 +20,7 @@
     "grunt-contrib-watch": "^1.0.0"
   },
   "engines": { "node": ">=0.8.0" },
+  "licenses": [ { "type": "MIT", "url": "https://github.com/lukequest/mariadb-transact/raw/master/LICENSE" } ],
   "keywords": [
     "maria", "mariasql", "mariadb", "transact", "transaction", "transactions", "sql", "mysql"
   ]
