@@ -15,6 +15,8 @@ class TransactionManager
     @_queue = []
     @_poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 3
     @conncfg = opts
+    @_closed = false
+    @_initialized = false
 
 
   _createConnection: ->
@@ -31,36 +33,57 @@ class TransactionManager
       conn.rollback = @rollback.bind(@, conn)
       conn.insert = @insert.bind(@, conn)
       conn._queryAsync = Promise.promisify(conn.query, context: conn)
-
-      conn.on "ready", =>
-        resolve(conn)
+      handled = false
 
       conn.on "error", (err) =>
-        reject(err)
+        if !handled
+          handled = true
+          reject(err)
+
+      conn.once "ready", =>
+        if !handled
+          handled = true
+          resolve(conn)
+
+      conn.on "close", @_handleConnectionClose.bind(@, conn)
+
+
+  _handleConnectionClose: (conn) ->
+    ###
+      Attempt to reconnect if connection is closed.
+    ###
+    if @_closed then return
+    conn.connect @conncfg
 
 
   init: ->
     ###
       Initialize all connections.
     ###
-    Promise.try =>
-      # First, create the basic "non-transactional" connection.
-      @_createConnection()
-    .then (conn) =>
-      @conn = conn
-      # Now create the transaction connections.
-      funcs = []
-      if @_poolsize > 0
-        for i in [1..@_poolsize]
-          funcs.push(@_createConnection())
-      Promise.all(funcs)
-    .then (tconns) =>
-      # Disable autocommit on all transaction connections.
-      funcs = []
-      for tc in tconns
-        @_pool.push(tc)
-        funcs.push(tc._queryAsync("SET autocommit = 0"))
-      Promise.all(funcs)
+    if @_initialized
+      return Promise.try =>
+        return
+    else
+      return Promise.try =>
+        # First, create the basic "non-transactional" connection.
+        @_createConnection()
+      .then (conn) =>
+        @conn = conn
+        # Now create the transaction connections.
+        funcs = []
+        if @_poolsize > 0
+          for i in [1..@_poolsize]
+            funcs.push(@_createConnection())
+        Promise.all(funcs)
+      .then (tconns) =>
+        # Disable autocommit on all transaction connections.
+        funcs = []
+        for tc in tconns
+          @_pool.push(tc)
+          funcs.push(tc._queryAsync("SET autocommit = 0"))
+        Promise.all(funcs)
+      .then =>
+        @_initialized = true
 
 
   basic: ->
@@ -79,9 +102,14 @@ class TransactionManager
       Close all connections.
     ###
     return new Promise (resolve) =>
+      @_closed = true
       @conn.end()
+      @conn.removeAllListeners("ready")
+      @conn.removeAllListeners("close")
       for c in @_pool
         c.end()
+        c.removeAllListeners("ready")
+        c.removeAllListeners("close")
       resolve()
 
 
