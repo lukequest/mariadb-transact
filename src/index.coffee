@@ -11,6 +11,7 @@ class TransactionManager
     if !opts then opts = {}
     @conn = connected:false
     @autoconvert = if typeof opts.metadata == "undefined" then true else !!opts.metadata
+    opts.charset = if typeof opts.charset == "string" then opts.charset else "utf8"
     @_pool = []
     @_queue = []
     @_poolsize = if typeof opts.poolsize == "number" then opts.poolsize else 3
