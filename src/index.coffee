@@ -198,7 +198,7 @@ class TransactionManager
       Fetch an array of SQL result rows.
     ###
     Promise.try =>
-      conn._queryAsync(sql, params || {})
+      conn._queryAsync(sql, params || {}, metadata: @autoconvert)
     .then (res) =>
       for row in res
         if res.info && res.info.metadata && @autoconvert then @convert(row, res.info.metadata)
@@ -210,7 +210,7 @@ class TransactionManager
       Fetch a single SQL result row.
     ###
     Promise.try =>
-      conn._queryAsync(sql, params || {})
+      conn._queryAsync(sql, params || {}, metadata: @autoconvert)
     .then (res) =>
       if res && res.length
         row = res[0]
