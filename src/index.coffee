@@ -189,8 +189,12 @@ class TransactionManager
     for key of row
       t = metadata[key].type
       if t=="DATE" || t=="DATETIME" || t=="TIMESTAMP" then row[key] = new Date(row[key])
-      if t=="DECIMAL" || t=="DOUBLE" || t=="FLOAT" then row[key] = parseFloat(row[key])
-      if t=="INTEGER" || t=="TINYINT" || t=="SMALLINT" || t=="MEDIUMINT" || t=="BIGINT" then row[key] = parseInt(row[key])
+      if t=="DECIMAL" || t=="DOUBLE" || t=="FLOAT"
+        newVal = parseFloat(row[key])
+        row[key] = if isNaN(newVal) then null else newVal
+      if t=="INTEGER" || t=="TINYINT" || t=="SMALLINT" || t=="MEDIUMINT" || t=="BIGINT"
+        newVal = parseInt(row[key])
+        row[key] = if isNaN(newVal) then null else newVal
 
 
   fetchArray: (conn, sql, params) ->
